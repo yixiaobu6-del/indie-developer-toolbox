@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>独立开发者产品路线图向导</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:linear-gradient(135deg, #0f172a 0%, #1e293b 100%); min-height:100vh; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif; color:#e2e8f0; }
+
+.step-indicator { position:relative; display:flex; justify-content:center; gap:0; }
+.step-dot { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:600; transition:all .3s; position:relative; z-index:2; }
+.step-dot.active { background:#6366f1; color:white; box-shadow:0 0 20px rgba(99,102,241,0.4); }
+.step-dot.completed { background:#10b981; color:white; }
+.step-dot.pending { background:#334155; color:#64748b; }
+.step-line { flex:1; height:2px; align-self:center; transition:all .3s; }
+.step-line.completed { background:#10b981; }
+.step-line.pending { background:#334155; }
+
+.product-card { cursor:pointer; transition:all .3s; border:2px solid transparent; }
+.product-card:hover { border-color:#6366f1; transform:translateY(-3px); box-shadow:0 10px 30px rgba(99,102,241,0.15); }
+.product-card.selected { border-color:#6366f1; background:rgba(99,102,241,0.08); }
+
+.card-glow { position:relative; overflow:hidden; }
+.card-glow::before { content:''; position:absolute; top:-50%; left:-50%; width:200%; height:200%; background:radial-gradient(circle,rgba(99,102,241,0.05) 0%,transparent 60%); opacity:0; transition:opacity .5s; }
+.card-glow:hover::before { opacity:1; }
+
+.wizard-step { display:none; animation:fadeIn .4s ease; }
+.wizard-step.active { display:block; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(15px); } to { opacity:1; transform:translateY(0); } }
+
+.tech-badge { display:inline-flex; align-items:center; gap:4px; padding:4px 12px; background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.2); border-radius:20px; font-size:13px; color:#a5b4fc; cursor:pointer; transition:all .2s; }
+.tech-badge:hover { background:rgba(99,102,241,0.2); }
+.tech-badge.selected { background:rgba(99,102,241,0.3); border-color:#6366f1; color:#c7d2fe; }
+
+.milestone-dot { width:14px; height:14px; border-radius:50%; flex-shrink:0; margin-top:4px; }
+
+.todo-item { display:flex; align-items:start; gap:10px; padding:10px; border-radius:8px; transition:all .2s; }
+.todo-item:hover { background:rgba(99,102,241,0.05); }
+.todo-item.done .todo-text { text-decoration:line-through; color:#64748b; }
+.todo-check { width:18px; height:18px; border:2px solid #475569; border-radius:4px; cursor:pointer; flex-shrink:0; margin-top:2px; transition:all .2s; display:flex; align-items:center; justify-content:center; }
+.todo-check:hover { border-color:#6366f1; }
+.todo-check.checked { background:#6366f1; border-color:#6366f1; color:white; font-size:11px; }
+
+.scrollbar-thin::-webkit-scrollbar { width:4px; }
+.scrollbar-thin::-webkit-scrollbar-track { background:transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background:#475569; border-radius:2px; }
+
+.progress-bar { height:4px; background:#334155; border-radius:2px; overflow:hidden; }
+.progress-bar-fill { height:100%; background:linear-gradient(90deg,#6366f1,#818cf8); border-radius:2px; transition:width .5s ease; }
+</style>
+</head>
+<body>
+
+<div class="max-w-5xl mx-auto p-4">
+  <!-- 头部 -->
+  <header class="text-center mb-8 pt-4">
+    <h1 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
+      <i class="fa fa-rocket mr-2"></i>独立开发者产品路线图向导
+    </h1>
+    <p class="text-slate-400 mt-2 text-sm">从 0 到 1，一步步打造你的独立产品</p>
+    <div class="progress-bar mt-4 max-w-md mx-auto">
+      <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+    </div>
+  </header>
+
+  <!-- 步骤指示器 -->
+  <div class="flex items-center max-w-2xl mx-auto mb-8 px-4" id="stepIndicator">
+    <div class="step-dot active" id="stepDot0">1</div>
+    <div class="step-line pending" id="stepLine0"></div>
+    <div class="step-dot pending" id="stepDot1">2</div>
+    <div class="step-line pending" id="stepLine1"></div>
+    <div class="step-dot pending" id="stepDot2">3</div>
+    <div class="step-line pending" id="stepLine2"></div>
+    <div class="step-dot pending" id="stepDot3">4</div>
+  </div>
+
+  <!-- 第1步：选择产品类型 -->
+  <div class="wizard-step active" id="step0">
+    <div class="text-center mb-6">
+      <h2 class="text-2xl font-bold text-white"><i class="fa fa-cube mr-2 text-indigo-400"></i>选择产品类型</h2>
+      <p class="text-slate-400 text-sm mt-1">你的产品属于哪种形态？</p>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="productGrid"></div>
+    <div class="text-center mt-6">
+      <button onclick="nextStep()" id="step0Next" class="px-6 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 font-medium disabled:opacity-30 disabled:cursor-not-allowed" disabled><i class="fa fa-arrow-right mr-2"></i>下一步</button>
+    </div>
+  </div>
+
+  <!-- 第2步：技术栈选择 -->
+  <div class="wizard-step" id="step1">
+    <div class="text-center mb-6">
+      <h2 class="text-2xl font-bold text-white"><i class="fa fa-code mr-2 text-indigo-400"></i>选择技术栈</h2>
+      <p class="text-slate-400 text-sm mt-1">根据你的产品类型，推荐以下技术方案</p>
+    </div>
+    <div id="techStackArea" class="space-y-4"></div>
+    <div class="text-center mt-6 flex gap-3 justify-center">
+      <button onclick="prevStep()" class="px-4 py-3 rounded-xl bg-slate-700 text-slate-300 hover:bg-slate-600 font-medium"><i class="fa fa-arrow-left mr-2"></i>上一步</button>
+      <button onclick="nextStep()" class="px-6 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 font-medium"><i class="fa fa-arrow-right mr-2"></i>下一步</button>
+    </div>
+  </div>
+
+  <!-- 第3步：商业模式 -->
+  <div class="wizard-step" id="step2">
+    <div class="text-center mb-6">
+      <h2 class="text-2xl font-bold text-white"><i class="fa fa-money mr-2 text-indigo-400"></i>选择商业模式</h2>
+      <p class="text-slate-400 text-sm mt-1">如何让你的产品产生收入？</p>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="bizModelGrid"></div>
+    <div class="text-center mt-6 flex gap-3 justify-center">
+      <button onclick="prevStep()" class="px-4 py-3 rounded-xl bg-slate-700 text-slate-300 hover:bg-slate-600 font-medium"><i class="fa fa-arrow-left mr-2"></i>上一步</button>
+      <button onclick="nextStep()" class="px-6 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 font-medium"><i class="fa fa-arrow-right mr-2"></i>生成路线图</button>
+    </div>
+  </div>
+
+  <!-- 第4步：结果 -->
+  <div class="wizard-step" id="step3">
+    <div class="text-center mb-6">
+      <h2 class="text-2xl font-bold text-white"><i class="fa fa-road mr-2 text-indigo-400"></i>你的产品路线图</h2>
+      <p class="text-slate-400 text-sm mt-1">根据你的选择，为你量身定制了以下计划</p>
+    </div>
+    <div class="space-y-6" id="resultArea"></div>
+    <div class="text-center mt-6 flex gap-3 justify-center flex-wrap">
+      <button onclick="prevStep()" class="px-4 py-3 rounded-xl bg-slate-700 text-slate-300 hover:bg-slate-600 font-medium"><i class="fa fa-arrow-left mr-2"></i>返回修改</button>
+      <button onclick="openCostEstimator()" class="px-5 py-3 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 font-medium"><i class="fa fa-calculator mr-2"></i>成本估算</button>
+      <button onclick="openCompetitorAnalysis()" class="px-5 py-3 rounded-xl bg-amber-600 text-white hover:bg-amber-500 font-medium"><i class="fa fa-binoculars mr-2"></i>竞品分析</button>
+      <button onclick="exportMarkdown()" class="px-5 py-3 rounded-xl bg-blue-600 text-white hover:bg-blue-500 font-medium"><i class="fa fa-download mr-2"></i>导出 Markdown</button>
+      <button onclick="resetAll()" class="px-4 py-3 rounded-xl bg-rose-600 text-white hover:bg-rose-500 font-medium"><i class="fa fa-refresh mr-2"></i>重新开始</button>
+    </div>
+  </div>
+</div>
+
+<!-- 新增：成本估算器模态框 -->
+<div id="costModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden" style="backdrop-filter:blur(4px);">
+  <div class="bg-slate-800 rounded-xl p-6 max-w-lg w-full mx-4 border border-slate-600 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-bold text-emerald-400"><i class="fa fa-calculator mr-2"></i>开发成本估算器</h3>
+      <button onclick="closeModal('costModal')" class="text-slate-400 hover:text-white"><i class="fa fa-times"></i></button>
+    </div>
+    <div class="space-y-3 mb-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1">团队规模</label>
+        <select id="costTeamSize" class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white">
+          <option value="1">1人（独立开发者）</option>
+          <option value="2">2人（合伙人）</option>
+          <option value="3">3-5人（小团队）</option>
+          <option value="10">5-10人（中型团队）</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1">开发周期（月）</label>
+        <select id="costDuration" class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white">
+          <option value="1">1个月</option>
+          <option value="2">2个月</option>
+          <option value="3">3个月</option>
+          <option value="6">6个月</option>
+          <option value="12">12个月+</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1">技术栈复杂度</label>
+        <select id="costComplexity" class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white">
+          <option value="low">低（简单前端+基础后端）</option>
+          <option value="medium">中（前后端+数据库+API集成）</option>
+          <option value="high">高（微服务+AI+实时通信+多端）</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1">地区/人力成本</label>
+        <select id="costRegion" class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white">
+          <option value="china">中国大陆</option>
+          <option value="seasia">东南亚</option>
+          <option value="europe">欧洲/北美</option>
+        </select>
+      </div>
+    </div>
+    <button onclick="estimateCost()" class="w-full bg-emerald-600 text-white py-3 rounded-lg hover:bg-emerald-500 font-bold"><i class="fa fa-calculator mr-2"></i>估算成本</button>
+    <div id="costResult" class="mt-4 hidden"></div>
+  </div>
+</div>
+
+<!-- 新增：竞品推荐模态框 -->
+<div id="competeModal" class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 hidden" style="backdrop-filter:blur(4px);">
+  <div class="bg-slate-800 rounded-xl p-6 max-w-3xl w-full mx-4 border border-slate-600 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-bold text-amber-400"><i class="fa fa-binoculars mr-2"></i>竞品分析与推荐</h3>
+      <button onclick="closeModal('competeModal')" class="text-slate-400 hover:text-white"><i class="fa fa-times"></i></button>
+    </div>
+    <div id="competeResult"></div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 产品模板数据
+// ============================================================
+const PRODUCT_TYPES = [
+  {
+    id: 'saas',
+    name: 'SaaS 服务',
+    icon: 'cloud',
+    desc: 'Web 端订阅制软件服务',
+    color: '#6366f1',
+    techStacks: [
+      { name: '前端', options: ['React + Next.js', 'Vue + Nuxt', 'SvelteKit', 'Remix'], icon: 'html5' },
+      { name: '后端', options: ['Node.js + Express', 'Python + FastAPI', 'Go + Gin', 'Rails'], icon: 'server' },
+      { name: '数据库', options: ['PostgreSQL', 'MySQL', 'MongoDB', 'Supabase'], icon: 'database' },
+      { name: '部署', options: ['Vercel', 'Railway', 'Fly.io', 'AWS'], icon: 'cloud-upload' }
+    ],
+    milestones: [
+      { period: '第1-2周', title: 'MVP 核心功能', tasks: ['用户认证系统', '核心业务逻辑', '基础UI'] },
+      { period: '第3-4周', title: '内测版', tasks: ['支付集成', '使用分析', '邀请内测用户'] },
+      { period: '第2月', title: '公开上线', tasks: ['官网+文档', 'SEO优化', '公测发布'] },
+      { period: '第3-4月', title: '增长阶段', tasks: ['用户反馈迭代', '内容营销', '付费推广'] }
+    ],
+    bizModels: [
+      { name: '按月订阅', desc: '月付/年付，不同功能层级', icon: 'calendar', revenue: '稳定 recurring revenue' },
+      { name: '按用量付费', desc: '按 API 调用/存储空间计费', icon: 'tachometer', revenue: '随增长递增' },
+      { name: 'Freemium', desc: '免费版 + 付费高级功能', icon: 'gift', revenue: '大规模获客后转化' }
+    ]
+  },
+  {
+    id: 'mobile',
+    name: '移动 App',
+    icon: 'mobile',
+    desc: 'iOS/Android 原生应用',
+    color: '#8b5cf6',
+    techStacks: [
+      { name: '框架', options: ['React Native', 'Flutter', 'Swift (iOS)', 'Kotlin (Android)'], icon: 'mobile' },
+      { name: '后端', options: ['Firebase', 'Supabase', 'Node.js', 'Parse'], icon: 'server' },
+      { name: '推送/分析', options: ['Firebase Cloud Messaging', 'Mixpanel', 'Amplitude'], icon: 'bell' },
+      { name: '上架', options: ['App Store', 'Google Play', 'TestFlight 内测'], icon: 'upload' }
+    ],
+    milestones: [
+      { period: '第1-2周', title: '原型与设计', tasks: ['用户流程图', 'UI设计稿', '交互原型'] },
+      { period: '第3-5周', title: '核心功能开发', tasks: ['导航框架', '核心页面', 'API集成'] },
+      { period: '第6周', title: '内测', tasks: ['TestFlight内测', 'Bug修复', '性能优化'] },
+      { period: '第7-8周', title: '上架发布', tasks: ['应用商店审核', 'ASO优化', '上线推广'] }
+    ],
+    bizModels: [
+      { name: '付费下载', desc: '一次性购买', icon: 'dollar', revenue: '单价收入' },
+      { name: '应用内购买', desc: '功能解锁/虚拟商品', icon: 'shopping-cart', revenue: '持续收入' },
+      { name: '广告收入', desc: '免费+广告展示', icon: 'bullhorn', revenue: '流量变现' }
+    ]
+  },
+  {
+    id: 'extension',
+    name: '浏览器插件',
+    icon: 'puzzle-piece',
+    desc: 'Chrome/Firefox/Edge 扩展',
+    color: '#ec4899',
+    techStacks: [
+      { name: '核心技术', options: ['Manifest V3', 'React/Preact', 'TypeScript', 'Tailwind CSS'], icon: 'code' },
+      { name: '功能', options: ['Content Script', 'Background Script', 'Storage API', '侧边栏'], icon: 'puzzle-piece' },
+      { name: '发布', options: ['Chrome Web Store', 'Firefox Add-ons', 'Edge Add-ons'], icon: 'upload' }
+    ],
+    milestones: [
+      { period: '第1周', title: '核心功能', tasks: ['插件架构搭建', '核心功能实现', '基础UI'] },
+      { period: '第2周', title: '完善与测试', tasks: ['权限优化', '兼容性测试', '安装体验优化'] },
+      { period: '第3周', title: '发布', tasks: ['商店素材准备', '提交审核', '上线推广'] }
+    ],
+    bizModels: [
+      { name: '免费+捐赠', desc: '免费使用 + Buy Me a Coffee', icon: 'heart', revenue: '社区支持' },
+      { name: '高级功能付费', desc: '基础免费，高级功能付费', icon: 'star', revenue: '功能转化' },
+      { name: '联盟推荐', desc: '插件中推荐相关服务', icon: 'link', revenue: '佣金收入' }
+    ]
+  },
+  {
+    id: 'api',
+    name: 'API 服务',
+    icon: 'exchange',
+    desc: '提供数据或功能 API',
+    color: '#14b8a6',
+    techStacks: [
+      { name: '框架', options: ['FastAPI (Python)', 'Express (Node)', 'Go Fiber', 'ASP.NET'], icon: 'server' },
+      { name: '文档', options: ['Swagger/OpenAPI', 'Postman', 'Redoc', 'ReadMe'], icon: 'file-text' },
+      { name: '计费', options: ['Stripe', 'LemonSqueezy', 'Chargebee', '自定义计费'], icon: 'credit-card' }
+    ],
+    milestones: [
+      { period: '第1周', title: 'API 核心', tasks: ['API 设计文档', '核心端点开发', '认证系统'] },
+      { period: '第2周', title: '完善', tasks: ['速率限制', '错误处理', 'API文档'] },
+      { period: '第3周', title: '上线', tasks: ['监控系统', '开发者门户', '上线发布'] }
+    ],
+    bizModels: [
+      { name: '按请求计费', desc: '每千次调用收费', icon: 'tachometer', revenue: '用多少付多少' },
+      { name: '分层订阅', desc: '不同请求量层级', icon: 'layer-group', revenue: '阶梯收入' },
+      { name: '免费额度+付费', desc: '每月免费5000次', icon: 'gift', revenue: '转化率驱动' }
+    ]
+  },
+  {
+    id: 'content',
+    name: '内容产品',
+    icon: 'book',
+    desc: '付费资讯/模板/课程',
+    color: '#f59e0b',
+    techStacks: [
+      { name: '平台', options: ['Gumroad', 'Notion + 支付', '自建网站', '知识星球'], icon: 'shopping-cart' },
+      { name: '支付', options: ['Stripe', 'LemonSqueezy', '支付宝/微信', 'PayPal'], icon: 'credit-card' },
+      { name: '营销', options: ['Twitter/X', '即刻', '小红书', '个人博客'], icon: 'bullhorn' }
+    ],
+    milestones: [
+      { period: '第1-2周', title: '内容创作', tasks: ['选题规划', '内容生产', '设计与排版'] },
+      { period: '第3周', title: '预售验证', tasks: ['等待列表收集', '社交预热', '定价测试'] },
+      { period: '第4周', title: '正式发布', tasks: ['上架销售', '发布推广', '用户反馈'] }
+    ],
+    bizModels: [
+      { name: '一次性售卖', desc: '电子书/模板一次买断', icon: 'dollar', revenue: '单次高客单价' },
+      { name: '会员订阅', desc: '定期内容更新', icon: 'calendar', revenue: '持续收入' },
+      { name: '预购模式', desc: '提前锁定用户', icon: 'rocket', revenue: '验证需求' }
+    ]
+  },
+  {
+    id: 'ecommerce',
+    name: '电商独立站',
+    icon: 'shopping-bag',
+    desc: '品牌电商/定制商品',
+    color: '#ef4444',
+    techStacks: [
+      { name: '建站', options: ['Shopify', 'WooCommerce', 'Next.js + Snipcart', 'Square'], icon: 'shopping-cart' },
+      { name: '支付', options: ['Stripe', 'PayPal', '支付宝', '货到付款'], icon: 'credit-card' },
+      { name: '物流', options: ['顺丰', '菜鸟', '京东物流', '自配送'], icon: 'truck' }
+    ],
+    milestones: [
+      { period: '第1-2周', title: '店铺搭建', tasks: ['选品确定', '店铺设计', '商品上架'] },
+      { period: '第3周', title: '营销准备', tasks: ['社交账号建立', '素材拍摄', '预热内容'] },
+      { period: '第4周', title: '开张运营', tasks: ['正式开业', '客户服务', '订单履约'] }
+    ],
+    bizModels: [
+      { name: '直接销售', desc: '商品差价盈利', icon: 'tags', revenue: '单件利润' },
+      { name: 'Dropshipping', desc: '无货源代发', icon: 'plane', revenue: '佣金分成' },
+      { name: '订阅制商品', desc: '定期配送', icon: 'refresh', revenue: '复购收入' }
+    ]
+  }
+];
+
+const currentState = {
+  step: 0,
+  product: null,
+  techSelections: {},
+  bizModel: null,
+  todoItems: []
+};
+
+// ============================================================
+// 初始化
+// ============================================================
+function init() {
+  renderProducts();
+  renderBizModels();
+  loadProgress();
+  updateStepUI();
+}
+
+function renderProducts() {
+  const grid = document.getElementById('productGrid');
+  grid.innerHTML = PRODUCT_TYPES.map(p => `
+    <div class="product-card card-glow bg-slate-800/50 rounded-xl p-6 border border-slate-700/50 ${currentState.product === p.id ? 'selected' : ''}" onclick="selectProduct('${p.id}')">
+      <div class="text-3xl mb-3" style="color:${p.color}"><i class="fa fa-${p.icon}"></i></div>
+      <h3 class="text-lg font-bold text-white mb-1">${p.name}</h3>
+      <p class="text-sm text-slate-400">${p.desc}</p>
+      <div class="mt-3 flex flex-wrap gap-1.5">
+        ${(p.techStacks[0]?.options || []).slice(0, 3).map(t => `<span class="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-400">${t}</span>`).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderBizModels() {
+  const grid = document.getElementById('bizModelGrid');
+  if (!currentState.product) { grid.innerHTML = '<p class="text-slate-500 text-center col-span-2">请先选择产品类型</p>'; return; }
+  const product = PRODUCT_TYPES.find(p => p.id === currentState.product);
+  if (!product) return;
+  grid.innerHTML = product.bizModels.map(m => `
+    <div class="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50 cursor-pointer transition-all hover:border-indigo-500 ${currentState.bizModel === m.name ? 'border-indigo-500 bg-indigo-900/20' : ''}" onclick="selectBizModel('${m.name}')">
+      <div class="flex items-start gap-3">
+        <div class="text-2xl text-indigo-400"><i class="fa fa-${m.icon}"></i></div>
+        <div>
+          <h4 class="font-bold text-white">${m.name}</h4>
+          <p class="text-sm text-slate-400 mt-1">${m.desc}</p>
+          <p class="text-xs text-emerald-400 mt-1"><i class="fa fa-line-chart mr-1"></i>${m.revenue}</p>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// 选择操作
+// ============================================================
+function selectProduct(id) {
+  currentState.product = id;
+  currentState.bizModel = null;
+  currentState.techSelections = {};
+  renderProducts();
+  document.getElementById('step0Next').disabled = false;
+  saveProgress();
+}
+
+function selectBizModel(name) {
+  currentState.bizModel = name;
+  renderBizModels();
+  saveProgress();
+}
+
+function selectTech(category, option) {
+  if (!currentState.techSelections[category]) currentState.techSelections[category] = [];
+  const arr = currentState.techSelections[category];
+  const idx = arr.indexOf(option);
+  if (idx >= 0) arr.splice(idx, 1);
+  else arr.push(option);
+  renderTechStacks();
+  saveProgress();
+}
+
+// ============================================================
+// 步骤导航
+// ============================================================
+function nextStep() {
+  if (currentState.step === 0 && !currentState.product) { alert('请先选择产品类型'); return; }
+  // 准备第2步数据
+  if (currentState.step === 1) prepareTechStacks();
+  // 生成第4步结果
+  if (currentState.step === 2) generateResult();
+  if (currentState.step < 3) {
+    currentState.step++;
+    updateStepUI();
+    saveProgress();
+  }
+}
+
+function prevStep() {
+  if (currentState.step > 0) {
+    currentState.step--;
+    updateStepUI();
+    saveProgress();
+  }
+}
+
+function updateStepUI() {
+  document.querySelectorAll('.wizard-step').forEach((el, i) => {
+    el.classList.toggle('active', i === currentState.step);
+  });
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById(`stepDot${i}`);
+    const line = document.getElementById(`stepLine${i}`);
+    if (dot) {
+      dot.className = `step-dot ${i < currentState.step ? 'completed' : i === currentState.step ? 'active' : 'pending'}`;
+      dot.innerHTML = i < currentState.step ? '<i class="fa fa-check"></i>' : i + 1;
+    }
+    if (line) {
+      line.className = `step-line ${i < currentState.step ? 'completed' : 'pending'}`;
+    }
+  }
+  const progress = ((currentState.step) / 3) * 100;
+  document.getElementById('progressFill').style.width = `${progress}%`;
+}
+
+// ============================================================
+// 技术栈渲染
+// ============================================================
+function prepareTechStacks() {
+  renderTechStacks();
+}
+
+function renderTechStacks() {
+  const area = document.getElementById('techStackArea');
+  const product = PRODUCT_TYPES.find(p => p.id === currentState.product);
+  if (!product) { area.innerHTML = '<p class="text-slate-500">请先在第一步选择产品类型</p>'; return; }
+  area.innerHTML = product.techStacks.map(ts => `
+    <div class="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+      <h4 class="font-bold text-white mb-3 flex items-center gap-2"><i class="fa fa-${ts.icon} text-indigo-400"></i>${ts.name}</h4>
+      <div class="flex flex-wrap gap-2">
+        ${ts.options.map(o => `<span class="tech-badge ${(currentState.techSelections[ts.name] || []).includes(o) ? 'selected' : ''}" onclick="selectTech('${ts.name}','${o}')">${o}</span>`).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// 生成结果
+// ============================================================
+function generateResult() {
+  const product = PRODUCT_TYPES.find(p => p.id === currentState.product);
+  if (!product) return;
+  const area = document.getElementById('resultArea');
+
+  const selectedTechs = Object.entries(currentState.techSelections)
+    .filter(([_, v]) => v.length > 0)
+    .map(([k, v]) => `${k}: ${v.join(', ')}`).join('\n');
+
+  // Todo 清单
+  const todos = [];
+  product.milestones.forEach(m => {
+    m.tasks.forEach(t => {
+      todos.push({ milestone: m.period, task: t, done: false });
+    });
+  });
+
+  currentState.todoItems = todos;
+
+  const doneTodos = todos.filter(t => t.done).length;
+
+  area.innerHTML = `
+    <!-- 摘要 -->
+    <div class="bg-gradient-to-r from-indigo-900/40 to-purple-900/40 rounded-xl p-6 border border-indigo-700/30">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
+        <div>
+          <div class="text-2xl font-bold text-indigo-400">${product.name}</div>
+          <div class="text-xs text-slate-500 mt-1">产品类型</div>
+        </div>
+        <div>
+          <div class="text-2xl font-bold text-emerald-400">${currentState.bizModel || '未选择'}</div>
+          <div class="text-xs text-slate-500 mt-1">商业模式</div>
+        </div>
+        <div>
+          <div class="text-2xl font-bold text-amber-400">${todos.length}</div>
+          <div class="text-xs text-slate-500 mt-1">待完成项</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 技术栈 -->
+    ${selectedTechs ? `
+    <div class="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+      <h3 class="font-bold text-white mb-3"><i class="fa fa-code mr-2 text-indigo-400"></i>技术栈方案</h3>
+      <pre class="text-sm text-slate-300 font-mono bg-slate-900/50 rounded p-3">${selectedTechs || '暂无选择'}</pre>
+    </div>` : ''}
+
+    <!-- 里程碑时间线 -->
+    <div class="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+      <h3 class="font-bold text-white mb-4"><i class="fa fa-calendar mr-2 text-indigo-400"></i>里程碑时间线</h3>
+      <div class="space-y-4">
+        ${product.milestones.map((m, i) => `
+          <div class="relative pl-8">
+            <div class="milestone-dot bg-indigo-500 absolute left-0" style="top:4px"></div>
+            ${i < product.milestones.length - 1 ? '<div class="absolute left-[6px] top-[18px] bottom-0 w-0.5 bg-slate-700"></div>' : ''}
+            <div class="flex items-baseline gap-3">
+              <span class="text-xs font-mono text-indigo-400">${m.period}</span>
+              <h4 class="font-bold text-white">${m.title}</h4>
+            </div>
+            <div class="flex flex-wrap gap-1.5 mt-1">
+              ${m.tasks.map(t => `<span class="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-400">${t}</span>`).join('')}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- Todo 清单 -->
+    <div class="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-bold text-white"><i class="fa fa-check-square-o mr-2 text-indigo-400"></i>Todo 清单</h3>
+        <span class="text-xs text-slate-400">${doneTodos}/${todos.length}</span>
+      </div>
+      <div class="space-y-1 max-h-[400px] overflow-y-auto scrollbar-thin" id="todoList">
+        ${todos.map((t, i) => `
+          <div class="todo-item ${t.done ? 'done' : ''}">
+            <div class="todo-check ${t.done ? 'checked' : ''}" onclick="toggleTodo(${i})">
+              ${t.done ? '<i class="fa fa-check"></i>' : ''}
+            </div>
+            <div class="flex-1">
+              <span class="text-xs text-slate-500">${t.milestone}</span>
+              <div class="todo-text text-sm text-slate-200">${t.task}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- 建议 -->
+    <div class="bg-amber-900/20 rounded-xl p-5 border border-amber-700/30">
+      <h3 class="font-bold text-amber-400 mb-2"><i class="fa fa-lightbulb-o mr-2"></i>关键建议</h3>
+      <ul class="text-sm text-slate-300 space-y-2">
+        <li><i class="fa fa-check text-emerald-400 mr-2"></i>先做最小可行产品（MVP），不要过度设计</li>
+        <li><i class="fa fa-check text-emerald-400 mr-2"></i>尽早获取真实用户反馈，快速迭代</li>
+        <li><i class="fa fa-check text-emerald-400 mr-2"></i>先验证付费意愿，再投入大规模开发</li>
+        <li><i class="fa fa-check text-emerald-400 mr-2"></i>保持独立，控制成本，避免过早融资</li>
+        <li><i class="fa fa-check text-emerald-400 mr-2"></i>建立个人品牌，内容营销是独立开发者最好的获客方式</li>
+      </ul>
+    </div>
+  `;
+}
+
+function toggleTodo(index) {
+  if (currentState.todoItems[index]) {
+    currentState.todoItems[index].done = !currentState.todoItems[index].done;
+    generateResult();
+    saveProgress();
+  }
+}
+
+// ============================================================
+// 导出 Markdown
+// ============================================================
+function exportMarkdown() {
+  const product = PRODUCT_TYPES.find(p => p.id === currentState.product);
+  if (!product) return;
+
+  const selectedTechs = Object.entries(currentState.techSelections)
+    .filter(([_, v]) => v.length > 0)
+    .map(([k, v]) => `- **${k}**：${v.join(', ')}`).join('\n');
+
+  const doneTodos = currentState.todoItems.filter(t => t.done).length;
+
+  let md = `# 独立产品路线图\n\n`;
+  md += `> 生成时间：${new Date().toLocaleString()}\n\n`;
+  md += `## 产品概览\n\n`;
+  md += `- **产品类型**：${product.name}\n`;
+  md += `- **商业模式**：${currentState.bizModel || '未选择'}\n`;
+  md += `- **待完成项**：${doneTodos}/${currentState.todoItems.length}\n\n`;
+
+  if (selectedTechs) {
+    md += `## 技术栈\n\n${selectedTechs}\n\n`;
+  }
+
+  md += `## 里程碑\n\n`;
+  product.milestones.forEach(m => {
+    md += `### ${m.period}：${m.title}\n\n`;
+    m.tasks.forEach(t => md += `- [ ] ${t}\n`);
+    md += '\n';
+  });
+
+  md += `## Todo 清单\n\n`;
+  currentState.todoItems.forEach(t => {
+    md += `- [${t.done ? 'x' : ' '}] [${t.milestone}] ${t.task}\n`;
+  });
+
+  md += `\n## 关键建议\n\n`;
+  md += `1. 先做最小可行产品（MVP），不要过度设计\n`;
+  md += `2. 尽早获取真实用户反馈，快速迭代\n`;
+  md += `3. 先验证付费意愿，再投入大规模开发\n`;
+  md += `4. 保持独立，控制成本，避免过早融资\n`;
+  md += `5. 建立个人品牌，内容营销是独立开发者最好的获客方式\n`;
+
+  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `产品路线图_${product.name}_${new Date().toISOString().slice(0, 10)}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+  addToast('已导出 Markdown 文件');
+}
+
+// ============================================================
+// localStorage 进度保存
+// ============================================================
+function saveProgress() {
+  try {
+    localStorage.setItem('roadmapWizard', JSON.stringify(currentState));
+  } catch(e) {}
+}
+
+function loadProgress() {
+  try {
+    const saved = localStorage.getItem('roadmapWizard');
+    if (saved) {
+      const data = JSON.parse(saved);
+      Object.assign(currentState, data);
+      if (currentState.step > 0) {
+        updateStepUI();
+        if (currentState.step >= 1) renderTechStacks();
+        if (currentState.step >= 2) renderBizModels();
+        if (currentState.step >= 3) generateResult();
+      }
+    }
+  } catch(e) {}
+}
+
+function resetAll() {
+  if (!confirm('确定要重新开始吗？当前进度将被清除。')) return;
+  currentState.step = 0;
+  currentState.product = null;
+  currentState.techSelections = {};
+  currentState.bizModel = null;
+  currentState.todoItems = [];
+  localStorage.removeItem('roadmapWizard');
+  updateStepUI();
+  renderProducts();
+  document.getElementById('step0Next').disabled = true;
+  addToast('已重置进度');
+}
+
+function addToast(msg) {
+  const el = document.createElement('div');
+  el.className = 'fixed bottom-6 right-6 bg-slate-800 text-white px-5 py-3 rounded-lg shadow-lg text-sm z-50 border border-slate-600';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2500);
+}
+
+function addToast(msg) {
+  const el = document.createElement('div');
+  el.className = 'fixed bottom-6 right-6 bg-slate-800 text-white px-5 py-3 rounded-lg shadow-lg text-sm z-50 border border-slate-600';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2500);
+}
+
+// ============================================================
+// 成本估算器
+// ============================================================
+const COST_DATA = {
+  china: { dev: 15000, designer: 12000, pm: 18000, ops: 10000 },
+  seasia: { dev: 8000, designer: 6000, pm: 10000, ops: 5000 },
+  europe: { dev: 50000, designer: 40000, pm: 60000, ops: 35000 }
+};
+const COMPLEXITY_MULTIPLIER = { low: 1, medium: 1.5, high: 2.2 };
+
+function openCostEstimator() {
+  document.getElementById('costResult').classList.add('hidden');
+  document.getElementById('costModal').classList.remove('hidden');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.add('hidden');
+}
+
+document.addEventListener('click', function(e) {
+  ['costModal','competeModal'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (e.target === el) el.classList.add('hidden');
+  });
+});
+
+function estimateCost() {
+  var teamSize = parseInt(document.getElementById('costTeamSize').value);
+  var duration = parseInt(document.getElementById('costDuration').value);
+  var complexity = document.getElementById('costComplexity').value;
+  var region = document.getElementById('costRegion').value;
+
+  var rates = COST_DATA[region];
+  var mult = COMPLEXITY_MULTIPLIER[complexity];
+  var headcount = Math.max(1, Math.ceil(teamSize * 0.7));
+  var monthlyCost = (rates.dev * headcount * 0.6 + rates.designer * Math.ceil(headcount * 0.15) + rates.pm * Math.ceil(headcount * 0.15) + rates.ops * Math.ceil(headcount * 0.1)) * mult;
+  var totalCost = monthlyCost * duration;
+
+  var regionLabels = { china: '中国大陆', seasia: '东南亚', europe: '欧洲/北美' };
+  var complexityLabels = { low: '低复杂度', medium: '中复杂度', high: '高复杂度' };
+  var costItems = [
+    { name: '开发工程师', count: Math.ceil(headcount * 0.6), rate: rates.dev },
+    { name: '设计师', count: Math.ceil(headcount * 0.15), rate: rates.designer },
+    { name: '项目经理', count: Math.ceil(headcount * 0.15), rate: rates.pm },
+    { name: '运维/运营', count: Math.ceil(headcount * 0.1), rate: rates.ops }
+  ];
+
+  var el = document.getElementById('costResult');
+  el.classList.remove('hidden');
+  el.innerHTML = '<div class="bg-slate-700/50 rounded-lg p-4 mt-4 space-y-3">' +
+    '<div class="text-center pb-3 border-b border-slate-600">' +
+      '<div class="text-3xl font-bold text-emerald-400">¥' + Math.round(totalCost).toLocaleString() + '</div>' +
+      '<div class="text-xs text-slate-400">预估总成本（' + duration + '个月）</div>' +
+    '</div>' +
+    '<div class="text-sm text-slate-300 space-y-1">' +
+      '<div class="flex justify-between"><span>团队规模</span><span>' + teamSize + '人</span></div>' +
+      '<div class="flex justify-between"><span>技术复杂度</span><span>' + complexityLabels[complexity] + '</span></div>' +
+      '<div class="flex justify-between"><span>地区</span><span>' + regionLabels[region] + '</span></div>' +
+      '<div class="flex justify-between"><span>月均成本</span><span>¥' + Math.round(monthlyCost).toLocaleString() + '</span></div>' +
+    '</div>' +
+    '<div class="border-t border-slate-600 pt-3">' +
+      '<div class="text-xs font-bold text-slate-400 mb-2">人员成本明细（月）</div>' +
+      costItems.map(function(item) { return '<div class="flex justify-between text-xs text-slate-400"><span>' + item.name + ' x' + item.count + '</span><span>¥' + (item.rate * item.count).toLocaleString() + '</span></div>'; }).join('') +
+    '</div>' +
+    '<div class="text-xs text-amber-400 bg-amber-900/20 p-3 rounded mt-2">' +
+      '<i class="fa fa-info-circle mr-1"></i>此为粗略估算，实际成本因具体需求、工具成本等因素浮动' +
+    '</div></div>';
+}
+
+// ============================================================
+// 竞品推荐
+// ============================================================
+var COMPETITOR_DATA = {
+  saas: {
+    competitors: [
+      { name: 'Notion', type: '全能协作平台', strength: '模块化设计、AI集成、知识库管理', weakness: '中文支持一般、高级功能付费', price: '免费/￥60+/月' },
+      { name: '飞书', type: '企业协作平台', strength: '中文原生、文档+IM+OKR一体化', weakness: '个人用户偏重', price: '免费/￥59/月' },
+      { name: 'Slack', type: '团队通讯', strength: '集成生态丰富、API开放', weakness: '中文体验差、费用较高', price: '免费/$7.25+/月' },
+      { name: 'ClickUp', type: '项目管理', strength: '功能全面、视图丰富', weakness: '学习曲线陡', price: '免费/$10+/月' }
+    ],
+    dimensions: ['产品体验', '功能完整度', '中文支持', '价格竞争力', '生态扩展']
+  },
+  mobile: {
+    competitors: [
+      { name: '微信读书', type: '阅读App', strength: '社交阅读、书库丰富、体验流畅', weakness: '商业化较重', price: '免费/会员￥30/月' },
+      { name: '小红书', type: '生活方式社区', strength: '种草社区、算法精准、商业化成熟', weakness: '内容同质化', price: '免费' },
+      { name: '剪映', type: '视频剪辑', strength: '模板丰富、操作简单、抖音生态', weakness: '专业功能不足', price: '免费/会员￥39/月' },
+      { name: '多邻国', type: '语言学习', strength: '游戏化设计、课程系统、用户粘性高', weakness: '内容深度有限', price: '免费/会员$6.99/月' }
+    ],
+    dimensions: ['用户体验', '功能深度', '本地化', '变现能力', '增长潜力']
+  },
+  extension: {
+    competitors: [
+      { name: '沉浸式翻译', type: '翻译插件', strength: '双语对照、多引擎支持', weakness: '高级功能收费', price: '免费/￥99/年' },
+      { name: 'uBlock Origin', type: '广告拦截', strength: '轻量高效、无追踪、开源', weakness: '配置复杂', price: '免费开源' },
+      { name: 'Tampermonkey', type: '脚本管理', strength: '用户脚本丰富、社区活跃', weakness: '安全性依赖用户', price: '免费开源' },
+      { name: 'Raindrop.io', type: '书签管理', strength: '多平台同步、标签系统、UI精美', weakness: '免费版功能有限', price: '免费/$3+/月' }
+    ],
+    dimensions: ['性能影响', '用户体验', '功能实用', '更新维护', '社区活跃']
+  },
+  api: {
+    competitors: [
+      { name: 'OpenAI API', type: 'AI API', strength: '模型强大、文档完善、生态丰富', weakness: '价格较高', price: '按量计费' },
+      { name: '阿里云API', type: '云API市场', strength: '中文文档、国内速度快', weakness: '部分API质量不一', price: '按量/包月' },
+      { name: '高德开放平台', type: '地图API', strength: '中文地图数据精准、POI丰富', weakness: '企业版贵', price: '免费/￥5万+/年' },
+      { name: '聚合数据', type: '数据API', strength: '数据种类多、接入简单、价格低', weakness: '数据更新频率不一', price: '免费/￥99+/年' }
+    ],
+    dimensions: ['价格优势', '文档质量', '数据准确', '服务稳定性', '技术支持']
+  }
+};
+var COMPETITOR_CATEGORIES = { saas: 'SaaS服务', mobile: '移动App', extension: '浏览器插件', api: 'API服务', content: '内容产品', ecommerce: '电商独立站' };
+
+function openCompetitorAnalysis() {
+  var productId = currentState.product;
+  var compete = COMPETITOR_DATA[productId];
+  var el = document.getElementById('competeResult');
+  if (!compete) {
+    el.innerHTML = '<div class="text-center text-slate-400 py-8"><i class="fa fa-info-circle fa-2x mb-2"></i><p>' + (COMPETITOR_CATEGORIES[productId] || '该类型') + ' 的竞品数据准备中</p></div>';
+  } else {
+    el.innerHTML = '<div class="mb-4"><div class="text-sm text-slate-400 mb-1">产品类型：' + (COMPETITOR_CATEGORIES[productId] || '未知') + '</div><h4 class="text-white font-bold text-lg">推荐竞品</h4></div>' +
+      '<div class="space-y-3 mb-4">' +
+      compete.competitors.map(function(c) {
+        return '<div class="bg-slate-700/50 rounded-lg p-4 border border-slate-600">' +
+          '<div class="flex justify-between items-start mb-2">' +
+            '<div><span class="font-bold text-white">' + c.name + '</span><span class="text-xs text-slate-400 ml-2">' + c.type + '</span></div>' +
+            '<span class="text-xs bg-amber-900/30 text-amber-400 px-2 py-0.5 rounded">' + c.price + '</span>' +
+          '</div>' +
+          '<div class="grid grid-cols-2 gap-2 text-xs">' +
+            '<div><span class="text-emerald-400">优势：</span><span class="text-slate-400">' + c.strength + '</span></div>' +
+            '<div><span class="text-red-400">劣势：</span><span class="text-slate-400">' + c.weakness + '</span></div>' +
+          '</div></div>';
+      }).join('') +
+      '</div>' +
+      '<div class="bg-indigo-900/30 rounded-lg p-4 border border-indigo-700/30">' +
+        '<h4 class="font-bold text-indigo-400 mb-2 text-sm"><i class="fa fa-bar-chart mr-1"></i>分析维度建议</h4>' +
+        '<div class="flex flex-wrap gap-2">' +
+          compete.dimensions.map(function(d) { return '<span class="px-3 py-1 bg-indigo-900/40 text-indigo-300 rounded-full text-xs border border-indigo-700/30">' + d + '</span>'; }).join('') +
+        '</div>' +
+        '<p class="text-xs text-slate-400 mt-3">建议从以上维度对竞品进行系统对比，找出差异化空间和竞争壁垒。</p></div>';
+  }
+  document.getElementById('competeModal').classList.remove('hidden');
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
